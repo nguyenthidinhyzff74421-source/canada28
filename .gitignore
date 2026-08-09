@@ -1,1 +1,4 @@
 node_modules .next .env .env.local
+fix.py
+fix2.py
+*.bak
