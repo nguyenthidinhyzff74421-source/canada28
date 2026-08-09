@@ -199,8 +199,8 @@ function formatMessage(session: SessionState): string {
   for (const p of recentPredictions) {
     const short = getPeriodShort(p.period);
     let line = `${short}.${p.prediction}`;
-    if (p.isCorrect === true) line += " ✅";
-    else if (p.isCorrect === false) line += " ❌";
+    if (p.isCorrect === true) line += `✅${p.actualNum ?? ""}`;
+    else if (p.isCorrect === false) line += `❌${p.actualNum ?? ""}`;
     lines.push(line);
   }
   return lines.join("\n");
@@ -272,6 +272,7 @@ function verifyPrediction(session: SessionState, draw: DrawResult): boolean | nu
   if (!pred) return null;
 
   pred.actualResult = draw.combination;
+  pred.actualNum = draw.num;
   pred.isCorrect = session.sessionType === "shuangzu"
     ? checkShuangzu(pred.prediction, draw.combination)
     : checkSanmen(pred.prediction, draw.combination);

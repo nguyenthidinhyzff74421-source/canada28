@@ -34,6 +34,7 @@ export interface PredictionEntry {
   period: string;
   prediction: string;
   actualResult?: string;
+  actualNum?: number;
   isCorrect?: boolean;
 }
 
