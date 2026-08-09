@@ -194,17 +194,24 @@ export function runBacktest() {
 }
 
 function formatMessage(session: SessionState): string {
-  const recentPredictions = session.predictions.slice(-15);
-  const lines: string[] = [];
-  for (const p of recentPredictions) {
+  const typeLabel = session.sessionType === "shuangzu" ? "📊 双组" : "🎯 三门";
+  let msg = `${typeLabel}\n`;
+
+  for (const p of session.predictions) {
     const short = getPeriodShort(p.period);
     let line = `${short}.${p.prediction}`;
     if (p.isCorrect === true) line += " ✅";
     else if (p.isCorrect === false) line += " ❌";
-    lines.push(line);
+    msg += line + "\n";
   }
-  return lines.join("
-");
+
+  const total = session.correctCount + session.wrongCount;
+  if (total > 0) {
+    const rate = ((session.correctCount / total) * 100).toFixed(0);
+    msg += `\n📈 ${session.correctCount}中${session.wrongCount}挂 胜率${rate}%`;
+  }
+
+  return msg;
 }
 
 function checkShuangzuReward(session: SessionState): string | null {
@@ -399,13 +406,8 @@ async function processNewDraw(draw: DrawResult) {
 
     if ((reward && total >= 10) || maxReached || sanmenGoal) {
       session.status = "completed";
-      {
-        const msg = formatMessage(session);
-        const result = await sendMessage(group.groupId, msg);
-        if (result.ok && result.messageId) {
-          session.messageId = result.messageId;
-          session.messageLink = getMessageLink(group.groupId, result.messageId);
-        }
+      if (session.messageId) {
+        await editMessage(group.groupId, session.messageId, formatMessage(session));
       }
       if (reward) {
         await sendRewardNotification(session, reward);
@@ -414,16 +416,10 @@ async function processNewDraw(draw: DrawResult) {
       continue;
     }
 
-    // Continue session - 发新消息
+    // Continue session
     addPrediction(session, nextPeriod);
-    {
-      const msg = formatMessage(session);
-      const result = await sendMessage(group.groupId, msg);
-      if (result.ok && result.messageId) {
-        session.messageId = result.messageId;
-        session.messageLink = getMessageLink(group.groupId, result.messageId);
-        addLog("MSG", `已发送 ID:${result.messageId}`, group.groupId);
-      }
+    if (session.messageId) {
+      await editMessage(group.groupId, session.messageId, formatMessage(session));
     }
   }
 }
