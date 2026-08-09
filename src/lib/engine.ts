@@ -203,8 +203,7 @@ function formatMessage(session: SessionState): string {
     else if (p.isCorrect === false) line += " ❌";
     lines.push(line);
   }
-  return lines.join("
-");
+  return lines.join("\n");
 }
 
 function checkShuangzuReward(session: SessionState): string | null {
