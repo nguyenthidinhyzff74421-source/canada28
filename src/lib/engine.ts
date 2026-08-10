@@ -296,22 +296,70 @@ function verifyPrediction(session: SessionState, draw: DrawResult): boolean | nu
   return pred.isCorrect;
 }
 
+// 阿拉伯数字转中文（6-15）
+function numToCn(n: number): string {
+  const map: Record<number, string> = {
+    6: "六", 7: "七", 8: "八", 9: "九", 10: "十",
+    11: "十一", 12: "十二", 13: "十三", 14: "十四", 15: "十五",
+  };
+  return map[n] || String(n);
+}
+
+// 根据 rewardType 生成简短奖励文本
+function buildRewardShort(sessionType: string, rewardType: string): string {
+  const emojis = ["😍", "😁", "😋"];
+  const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+  const prefix = sessionType === "shuangzu" ? "双组" : "杀组";
+
+  const rateMatch = rewardType.match(/胜率(\d+)/);
+  if (rateMatch) {
+    return `${prefix}${rateMatch[1]}${emoji}`;
+  }
+
+  const winMatch = rewardType.match(/连中(\d+)/);
+  if (winMatch) {
+    return `${prefix}${numToCn(parseInt(winMatch[1], 10))}连${emoji}`;
+  }
+
+  const loseMatch = rewardType.match(/连挂(\d+)/);
+  if (loseMatch) {
+    return `${prefix}${numToCn(parseInt(loseMatch[1], 10))}挂${emoji}`;
+  }
+
+  return `${prefix}${rewardType}${emoji}`;
+}
+
 async function sendRewardNotification(session: SessionState, rewardType: string) {
   const group = GROUP_CONFIGS.find((g) => g.groupId === session.groupId);
   if (!group) return;
 
-  const typeLabel = session.sessionType === "shuangzu" ? "双组" : "三门";
-  const link = session.messageLink || "(无链接)";
+  const link = session.messageLink;
+  if (!link) {
+    addLog("ERROR", "链接为空，跳过奖励推送", group.groupId);
+    return;
+  }
 
-  const text = `🎁 报数奖励\n类型: ${typeLabel}\n群组: ${group.groupName}\n奖励: ${rewardType}\n链接: ${link}`;
+  // 第 1 条：只发链接
+  const r1 = await sendPrivateMessage(group.auditorUsername, link);
+  if (!r1.ok) {
+    addLog("ERROR", `链接发送失败: ${r1.error}`, group.groupId);
+    return;
+  }
 
-  const result = await sendPrivateMessage(group.auditorUsername, text);
-  if (result.ok) {
+  // 等 3-7 秒随机
+  const gapMs = 3000 + Math.floor(Math.random() * 4001);
+  await delay(gapMs);
+
+  // 第 2 条：奖励简称 + 随机 emoji
+  const shortText = buildRewardShort(session.sessionType, rewardType);
+  const r2 = await sendPrivateMessage(group.auditorUsername, shortText);
+
+  if (r2.ok) {
     session.rewardClaimed = true;
     session.rewardType = rewardType;
-    addLog("REWARD", `已私聊 ${group.auditorUsername}`, group.groupId);
+    addLog("REWARD", `已发送 ${group.auditorUsername}: ${shortText}`, group.groupId);
   } else {
-    addLog("ERROR", `发送失败: ${result.error}`, group.groupId);
+    addLog("ERROR", `奖励发送失败: ${r2.error}`, group.groupId);
   }
 }
 
@@ -322,9 +370,10 @@ function delay(ms: number): Promise<void> {
 async function processNewDraw(draw: DrawResult) {
   const nextPeriod = getNextPeriod(draw.period);
 
-  if (messageDelay > 0) {
-    await delay(messageDelay * 1000);
-  }
+  // 模拟真人：新一期开奖后等 25-30 秒随机再发预测
+  const humanDelayMs = 25000 + Math.floor(Math.random() * 5001);
+  addLog("DELAY", `随机延迟 ${(humanDelayMs / 1000).toFixed(1)}s 后发送`);
+  await delay(humanDelayMs);
 
   for (const group of GROUP_CONFIGS) {
     let session = groupSessions.get(group.groupId);
