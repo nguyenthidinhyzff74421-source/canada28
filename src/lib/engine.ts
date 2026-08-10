@@ -14,6 +14,7 @@ import {
 } from "./algorithms";
 import { fetchLatestDraw, fetchHistoricalDraws, mergeIntoHistory, getNextPeriod } from "./data-fetcher";
 import { backtestAllAlgorithms, BacktestResult } from "./backtest";
+import { initSeedManager, scanAllSeeds, shouldRescan, getSeedStatus } from "./seed-manager";
 import {
   sendMessage,
   editMessage,
@@ -498,6 +499,15 @@ async function pollLoop() {
       lastProcessedPeriod = draw.period;
       addLog("DRAW", `${draw.period.slice(-4)}: ${draw.num}(${draw.combination})`);
 
+      // Check if seeds need rescanning (every 20 periods)
+      if (shouldRescan(draw.period) && drawHistory.length >= 31) {
+        setImmediate(async () => {
+          addLog("SEED", "触发种子重扫");
+          await scanAllSeeds(drawHistory);
+          addLog("SEED", `重扫完成 主:${getSeedStatus().mainCount} 杀:${getSeedStatus().killCount}`);
+        });
+      }
+
       if (isClientConnected()) {
         await processNewDraw(draw);
       }
@@ -522,6 +532,24 @@ export async function startEngine() {
   if (!historyLoaded) {
     loadHistoricalData();
   }
+
+  // Init seed manager (load cached seeds)
+  await initSeedManager();
+  addLog("ENGINE", "种子管理器已加载");
+
+  // Trigger initial seed scan in background if needed
+  setTimeout(async () => {
+    const status = getSeedStatus();
+    if (status.mainCount === 0 || status.killCount === 0) {
+      if (drawHistory.length >= 31) {
+        addLog("SEED", "首次种子扫描启动（约 30-60 秒）");
+        await scanAllSeeds(drawHistory);
+        addLog("SEED", `扫描完成 主:${getSeedStatus().mainCount} 杀:${getSeedStatus().killCount}`);
+      } else {
+        addLog("SEED", `历史数据不足 (${drawHistory.length}/31)，稍后自动扫描`);
+      }
+    }
+  }, 5000);
 
   pollLoop();
   intervalHandle = setInterval(pollLoop, POLL_INTERVAL_MS);

@@ -4,6 +4,7 @@
  */
 
 import { DrawResult, Combination, ALL_COMBINATIONS, getCombination, parseNumberDetail } from "./pc28";
+import { getBestMainSeed, getBestKillSeed } from "./seed-manager";
 
 export interface AlgorithmInfo {
   id: string;
@@ -209,7 +210,7 @@ function shuangzuERand(history: DrawResult[]): [Combination, Combination] {
   
   const last = history[0];
   // 使用固定种子进行预测（实际使用时可扫描最优种子）
-  const seed = 12345;
+  const seed = getBestMainSeed() || 12345;
   const groups = getERandGroups(seed, last.period, last.num);
   
   // 排除杀组，返回两个推荐
@@ -402,7 +403,7 @@ function sanmenERandKill(history: DrawResult[]): Combination {
   if (history.length < 2) return "大双";
   
   const last = history[0];
-  const seed = 12345; // 固定种子
+  const seed = getBestKillSeed() || 12345;
   const groups = getERandGroups(seed, last.period, last.num);
   return getERandKill(groups);
 }
