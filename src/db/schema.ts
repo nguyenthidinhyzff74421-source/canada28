@@ -71,3 +71,41 @@ export const actionLogs = pgTable("action_logs", {
   sessionId: integer("session_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// 算法历史：每个算法每期的预测和对错
+export const algorithmHistory = pgTable("algorithm_history", {
+  id: serial("id").primaryKey(),
+  algorithmId: varchar("algorithm_id", { length: 50 }).notNull(),
+  algorithmType: varchar("algorithm_type", { length: 10 }).notNull(),
+  period: varchar("period", { length: 20 }).notNull(),
+  prediction: text("prediction").notNull(),
+  actualCombination: varchar("actual_combination", { length: 10 }),
+  actualNum: integer("actual_num"),
+  isCorrect: boolean("is_correct"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// 种子缓存：存储扫描出的最优种子
+export const seedCache = pgTable("seed_cache", {
+  id: serial("id").primaryKey(),
+  seedType: varchar("seed_type", { length: 20 }).notNull(),
+  seedValue: integer("seed_value").notNull(),
+  hitCount: integer("hit_count").notNull().default(0),
+  totalTests: integer("total_tests").notNull().default(0),
+  rank: integer("rank").notNull().default(0),
+  scannedAt: timestamp("scanned_at").defaultNow(),
+});
+
+// 算法实时统计
+export const algorithmStats = pgTable("algorithm_stats", {
+  id: serial("id").primaryKey(),
+  algorithmId: varchar("algorithm_id", { length: 50 }).notNull().unique(),
+  algorithmType: varchar("algorithm_type", { length: 10 }).notNull(),
+  recent20Correct: integer("recent20_correct").notNull().default(0),
+  recent20Total: integer("recent20_total").notNull().default(0),
+  recent50Correct: integer("recent50_correct").notNull().default(0),
+  recent50Total: integer("recent50_total").notNull().default(0),
+  allTimeCorrect: integer("all_time_correct").notNull().default(0),
+  allTimeTotal: integer("all_time_total").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
