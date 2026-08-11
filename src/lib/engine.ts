@@ -71,6 +71,7 @@ const POLL_INTERVAL_MS = 8000;
 
 const GROUP_CONFIGS: GroupConfig[] = [
   { groupId: "-1004291735704", auditorUsername: "@pznbnb", groupName: "群组1" },
+  { groupId: "-1002102968320", auditorUsername: "@oulu", groupName: "群组3" },
   { groupId: "-1004295253660", auditorUsername: "@hn222", groupName: "群组2" },
 ];
 
@@ -364,12 +365,40 @@ async function sendRewardNotification(session: SessionState, rewardType: string)
   }
 }
 
+
+// 检查当前是否在休息时间段（UTC 时间，对应中国时间）
+function isInRestPeriod(): { resting: boolean; reason: string } {
+  const now = new Date();
+  const totalMin = now.getUTCHours() * 60 + now.getUTCMinutes();
+
+  // 中国 02:00-06:30 = UTC 18:00-22:30 (1080-1350)
+  if (totalMin >= 1080 && totalMin < 1350) {
+    return { resting: true, reason: "凌晨休息 (CN 02:00-06:30)" };
+  }
+  // 中国 13:00-13:30 = UTC 05:00-05:30 (300-330)
+  if (totalMin >= 300 && totalMin < 330) {
+    return { resting: true, reason: "午间休息 (CN 13:00-13:30)" };
+  }
+  // 中国 18:00-18:30 = UTC 10:00-10:30 (600-630)
+  if (totalMin >= 600 && totalMin < 630) {
+    return { resting: true, reason: "晚间休息 (CN 18:00-18:30)" };
+  }
+  return { resting: false, reason: "" };
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function processNewDraw(draw: DrawResult) {
   const nextPeriod = getNextPeriod(draw.period);
+
+  // 休息时间检查
+  const rest = isInRestPeriod();
+  if (rest.resting) {
+    addLog("REST", rest.reason + "，跳过本期");
+    return;
+  }
 
   // 模拟真人：新一期开奖后等 25-30 秒随机再发预测
   const humanDelayMs = 25000 + Math.floor(Math.random() * 5001);

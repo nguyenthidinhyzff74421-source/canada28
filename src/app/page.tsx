@@ -79,6 +79,7 @@ interface EngineStatus {
 
 const GROUPS: Record<string, { name: string; auditor: string }> = {
   "-1004291735704": { name: "群组1", auditor: "@pznbnb" },
+  "-1002102968320": { name: "群组3", auditor: "@oulu" },
   "-1004295253660": { name: "群组2", auditor: "@hn222" },
 };
 
